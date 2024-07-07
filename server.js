@@ -1,34 +1,32 @@
-const express = require('express');
-const axios = require('axios');
-const app = express();
-const port = process.env.PORT || 3000;
+require("dotenv").config();
+const express = require("express");
+const axios = require("axios");
+const api_key = process.env.API
 
-// Function to get IP and location details
-const getLocationDetails = async (ip) => {
-  try {
-    const response = await axios.get(`http://ip-api.com/json/${ip}`);
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching location details:', error);
-    return { city: 'Unknown', query: '127.0.0.1' };
-  }
-};
 
-app.get('/api/hello', async (req, res) => {
-  const visitorName = req.query.visitor_name || 'Guest';
-  const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+const app = express()
+app.set('trust proxy', true)
 
-  const locationDetails = await getLocationDetails(clientIp);
-  const city = locationDetails.city || 'Unknown';
-  const temp = 11; // Placeholder temperature value
+app.get("/api/hello", async (req, res) => {
+    const name = req.query.visitor_name
+    let ip = req.ip
+    console.log(name, ip)
 
-  res.json({
-    client_ip: clientIp,
-    location: city,
-    greeting: `Hello, ${visitorName}!, the temperature is ${temp} degrees Celsius in ${city}`
-  });
-});
+    const res_data = axios.get(`http://api.weatherapi.com/v1/current.json?key=${api_key}&q=${ip}`).then(res => res.data)
+    let data = await res_data.then(res => res)
+    const location = data.location.name
+    const temp = data.current.temp_c
+    console.log(data)
 
-app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}/`);
-});
+    res.json({
+        "client_ip": ip,
+        "location": location, // The city of the requester
+        "greeting": `Hello, ${name}!, the temperature is ${temp} degrees Celcius in ${location}`
+    })
+})
+
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`Server listening at PORT ${PORT}`)
+})
